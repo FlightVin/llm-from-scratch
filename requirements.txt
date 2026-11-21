@@ -1,0 +1,32 @@
+# Python >= 3.12 is required: some notebook cells use PEP 701 f-strings.
+# Versions are not pinned because no fully verified environment was recorded.
+
+# Grading client (the commit that the saved notebook outputs resolved to).
+mugrade @ git+https://github.com/locuslab/mugrade.git@717e300a5c2ddc0c729746946f8dc9f0d1c0ecea
+
+# Core (Parts 1-6)
+numpy
+torch
+tqdm
+python-dotenv
+huggingface_hub
+joblib
+
+# Part 1: dataset download and tokenizer training
+pyarrow
+
+# Parts 3 and 5: experiment logging
+wandb
+
+# Part 5: optional rebuild of the GSM8K files
+datasets
+
+# Part 6: GPU arrays. Install the wheel that matches your CUDA version, e.g.
+#   pip install cupy-cuda12x
+# The scatter-add in Tensor.__getitem__ uses cupy.add.at (ufunc.at, CuPy >= 13).
+
+# Notebook runtime (the notebooks also run in Google Colab)
+jupyterlab
+
+# Repository tests (CPU only; see tests/)
+pytest

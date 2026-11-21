@@ -1,0 +1,123 @@
+# ---------------------------------------------------------------------------
+# Secrets and credentials
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+secrets.json
+service_account*.json
+.netrc
+.huggingface/
+.cache/huggingface/
+.config/wandb/
+
+# ---------------------------------------------------------------------------
+# Python
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+.eggs/
+build/
+dist/
+wheels/
+pip-wheel-metadata/
+.installed.cfg
+
+# Test, coverage, and type-check caches
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.hypothesis/
+
+# ---------------------------------------------------------------------------
+# Virtual environments
+# ---------------------------------------------------------------------------
+.venv/
+venv/
+env/
+ENV/
+.conda/
+conda-env/
+.python-version
+
+# ---------------------------------------------------------------------------
+# Jupyter
+# ---------------------------------------------------------------------------
+.ipynb_checkpoints/
+*-checkpoint.ipynb
+.virtual_documents/
+
+# ---------------------------------------------------------------------------
+# Datasets, tokenizers, and tokenized corpora (downloaded or generated)
+# ---------------------------------------------------------------------------
+*.bin
+*.bpe
+*.parquet
+*.arrow
+fineweb-edu-*.txt
+smoltalk*.txt
+gsm8k_*.json
+data/
+datasets/
+.tmp/
+
+# ---------------------------------------------------------------------------
+# Model weights, checkpoints, and gradients
+# ---------------------------------------------------------------------------
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.npz
+*.npy
+*.h5
+*.onnx
+checkpoints/
+
+# ---------------------------------------------------------------------------
+# Run-time configs written by %%writefile or downloaded by the notebooks
+# ---------------------------------------------------------------------------
+part*/config*.json
+
+# ---------------------------------------------------------------------------
+# Experiment tracking and logs
+# ---------------------------------------------------------------------------
+wandb/
+runs/
+lightning_logs/
+mlruns/
+outputs/
+logs/
+*.log
+nohup.out
+
+# ---------------------------------------------------------------------------
+# Local-only material (course starter notebooks kept outside version control)
+# ---------------------------------------------------------------------------
+local_archive/
+
+# ---------------------------------------------------------------------------
+# Editors and operating systems
+# ---------------------------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
