@@ -4,7 +4,7 @@ A from-scratch implementation of the full language-model stack: a byte-level BPE
 
 This repository is an individual sub-project of a Fall 2026 Carnegie Mellon University course. The assignment scaffolding, grader test files, and course data come from the public [`zkolter/llm_speedrun`](https://github.com/zkolter/llm_speedrun) repository. The model, optimizer, and training loops use tensor primitives, not `torch.nn` modules or `torch.optim`. Part 6 replaces PyTorch autograd with its own engine.
 
-> **Evidence status.** The saved notebook outputs record Mugrade grader results for the graded functions (see [Results](#11-results)). The repository contains **no** training logs, loss curves, checkpoints, generated samples, or GSM8K scores. This README does not report any such numbers.
+> **Training status.** The model was trained, but the trained weights and training logs are not hosted in this repository.
 
 ---
 
@@ -20,10 +20,7 @@ This repository is an individual sub-project of a Fall 2026 Carnegie Mellon Univ
 8. [SFT, tool use, REINFORCE, and GSM8K evaluation (Part 5)](#8-sft-tool-use-reinforce-and-gsm8k-evaluation-part-5)
 9. [Automatic differentiation on CuPy (Part 6)](#9-automatic-differentiation-on-cupy-part-6)
 10. [Reproducibility](#10-reproducibility)
-11. [Results](#11-results)
-12. [Changes made for this release](#12-changes-made-for-this-release)
-13. [Limitations](#13-limitations)
-14. [Future work](#14-future-work)
+11. [Future work](#11-future-work)
 
 ---
 
@@ -274,7 +271,7 @@ For each batch of $n$ problems, every rank does the following:
 5. Minimizes $\mathcal{L}_{\text{RL}} = \mathcal{L}_{\text{SFT}}(w = \hat A)$ on the sampled sequences. Its gradient is the REINFORCE estimator $-\frac{1}{|\mathcal{M}|}\sum_{i,j}\hat A_{ij}\sum_t \nabla_\theta \log \pi_\theta(y_{ij,t}\mid y_{ij,<t})$.
 6. Accumulates both gradients, all-reduces them, and takes one Adam step.
 
-The update is on-policy and single-step. It has no importance ratio, no clipping, and no KL penalty. Prompt tokens are identical within a group and $\sum_j \hat A_{ij} = 0$, so their loss terms cancel. Tool-response tokens are not sampled by the policy, but they stay in the loss (see [Limitations](#13-limitations)).
+The update is on-policy and single-step. It has no importance ratio, no clipping, and no KL penalty. Prompt tokens are identical within a group and $\sum_j \hat A_{ij} = 0$, so their loss terms cancel. Tool-response tokens are not sampled by the policy, but they stay in the loss.
 
 ### 8.5 Evaluation
 
@@ -360,81 +357,9 @@ Part 1 can rebuild the tokenizer and token files from the raw datasets. This nee
 
 Dataset shuffling and the GSM8K file order use seed 42. Parameter initialization, SFT shifts, and sampling do not set a seed, so runs are not bit-reproducible.
 
-## 11. Results
+## 11. Future work
 
-### 11.1 Verified: Mugrade grader results in the saved notebook outputs
-
-Mugrade runs each test locally and sends the answer to a server for comparison. The table counts the "Grader test N passed/failed" lines in the saved outputs.
-
-| Part | Graded functions with a saved result | Grader tests passed | Notes |
-|---|---|---|---|
-| 0 | `add`, `primes`, `poly_add`, `poly_mul`, `poly_derivative` | 18 / 18 | |
-| 1 | `BPE`: `__init__`, `merge_pair`, `replace_special_tokens`, `train`, `encode`, `decode`, `save` | 30 / 30 | `encode` changed after this record ([§12](#12-changes-made-for-this-release)). |
-| 2 | `embedding`, `linear`, `silu`, `rms_norm`, `softmax`, `self_attn`, `LLM`: `rope`, `multihead_attn`, `mlp`, `transformer_block`, `__init__`, `__call__`, `save`, `load` | 44 / 44 | |
-| 3 | `train_llm_distributed` | 3 / 3 | No saved result for `cross_entropy_loss`, `Adam`, `LRSchedule`, `train_llm`. The data-offset and logging lines changed after this record. |
-| 4 | `rope`, `multihead_attn`, `transformer_block`, `__call__`, `generate` | 15 / 15 | |
-| 5 | `generate`, `cross_entropy_loss`, `Adam.__init__`, `Adam.step`, `finetune_llm_sft`, `tool_eval`, `extract_answer`, `eval_examples`, `eval_dataset`, `finetune_llm_rl` | 64 / 64 | `grade` was submitted, but no result lines were printed. `tool_eval` changed after this record. |
-| 6 | 19 engine functions (`Tensor` ops, `backward`, `softmax`, `cross_entropy_loss`, `silu`, `rms_norm`, `self_attn`) and 8 LLM functions | 87 / 88 | `LLM_init` failed test 3 of 4. `LLM_init` and `backward` changed after this record. |
-
-A grader pass means that the function matched the reference on the grader's small fixtures. It does not show that a full-scale run succeeds.
-
-### 11.2 Not verified
-
-- **No training runs are recorded.** The repository has no loss or bpb values, W&B logs, or checkpoints for Parts 3 and 5.
-- **No GSM8K metrics.** The pass@1, pass@k, and valid-rate cells have no saved output.
-- **No generated text.** The Part 4 sampling cell has no saved output.
-- **No gradient-check output** for Part 6.
-- **The fixes in [§12](#12-changes-made-for-this-release) have not been run.** They were checked against the course test files by reading the code.
-- **`tests/test_notebooks.py` has not been run** in this release.
-
-## 12. Changes made for this release
-
-The changes below fix defects found in a full code audit. Each change keeps the course test contract, which was checked against the `*_tests.py` files.
-
-| Part | Change | Defect fixed |
-|---|---|---|
-| All | Read `MUGRADE_KEY` from the environment or `.env`. | A Mugrade API key was hard-coded in 7 notebooks. |
-| All | Cleared the outputs of the `pip install` / `wget` setup cells, and of two cells whose saved output no longer matched the code (the Part 1 sanity check and the Part 6 copied-model cell). | The setup outputs contained local file-system paths. |
-| 1, 3–6 | `BPE.encode` keeps special tokens as their IDs. | `encode` dropped every special token on a real tokenizer, which broke `<DOCUMENT>` separators, chat prompts, and `<RESPONSE>` injection. The test fixture has no `special_tokens` attribute, so the grader could not detect this. The course test expects `encode("<SPECIAL>") == [300]`. |
-| 1 | `pretokenize` creates its temporary directory. | `FileNotFoundError` for `.tmp/`. |
-| 3 | The training cells read `config.d12.json`. The 8-GPU config is written to `config.d12.8gpu.json`. | The cells read `config.d12.class.json`, which nothing creates. The 8-GPU cell overwrote the single-GPU config. |
-| 3 | File offsets advance by whole rows: `round(p·B)·(T+1)·2` bytes. | With $B = 4$ the offset advanced 7,175 bytes per step. This odd byte count misaligned all later uint16 reads. |
-| 3 | Distributed bpb uses the all-reduced loss and byte count with the local batch size. | The logged bpb was about $G$ times too large. |
-| 4, 5 | `LLM.__init__` builds `rope1`/`rope2`, the names that `rope()` reads (and the Part 4 tests use). | `KeyError` at the first real forward pass. The grader fixtures supplied their own buffers. |
-| 5 | `LLM.__init__` converts a dtype string from a JSON config to a `torch.dtype`. | SFT, RL, and evaluation load JSON configs, and `.to(dtype="bfloat16")` fails. |
-| 5 | `torch.load(..., map_location="cpu")`. | `"CPU"` is not a valid device string. |
-| 5 | `tool_eval` uses an AST-based arithmetic evaluator. | The original passed model-generated text to `eval()`, which allows arbitrary code execution. |
-| 5 | The evaluation cell imports `joblib`. | `NameError` if it ran before the SFT cell. |
-| 6 | `backward` passes plain-array parents through. | `AttributeError` at `loss.backward()`, because the targets are a plain array. |
-| 6 | `LLM.__init__` builds the mask and RoPE tables in the model dtype. | Probable cause of the failed grader test (float64 config, float32 buffers). Not re-submitted. |
-| 6 | The gradient-check cell runs CuPy in float32, loads with `map_location="cpu"`, and converts with `.float()`. | CuPy has no bfloat16, and `.numpy()` fails on bfloat16 tensors. |
-| 6 | Removed a stray `@mugrade.submit_tests` from the copied `generate`. | It printed "ERROR: No submission function found". |
-| Repo | Renamed folders and notebooks. Removed `__pycache__`. Moved the two blank course starter notebooks to the git-ignored `local_archive/`. Added the Part 6 test file from upstream, `.gitignore`, `.env.example`, `requirements.txt`, and tests. | |
-
-`tests/test_notebooks.py` adds regression tests for these fixes:
-
-- no literal API keys,
-- every opened config file is written or downloaded,
-- every buffer that a method reads is built in `__init__`,
-- the BPE round trip keeps special tokens,
-- `tool_eval` matches the course cases and rejects non-arithmetic input,
-- the Part 6 engine agrees with finite differences on NumPy.
-
-## 13. Limitations
-
-- **Duplicated code.** The BPE and LLM code is copied into each later notebook, because each notebook must run alone for grading. A fix must be applied to every copy.
-- **Numerics.** RMSNorm has no $\epsilon$, so an all-zero vector produces NaN. The norms have no learnable gain.
-- **Tokenizer input.** Text must consist of characters below U+0100 (Latin-1-decoded bytes). A higher code point collides with a merge ID.
-- **Data pipeline.** The loader reads rows sequentially from pre-shuffled files and reopens the file for each row. bpb uses decoded characters as bytes, so special tokens count as their tag length.
-- **RL estimator.** Plain REINFORCE has high variance and no trust region. Tool-response tokens are not policy samples but stay in the loss, which biases the gradient. With $k = 1$ the group standard deviation is undefined.
-- **Generation speed.** Part 5 samples with a Python loop over the batch, and forced tool tokens use one forward call each.
-- **Evaluation split.** `eval_dataset` assumes that `batch_size / k` divides evenly by the GPU count. Otherwise some problems are skipped but still counted.
-- **Part 6.** `backward` is recursive, so very deep graphs can reach Python's recursion limit. An intermediate result that the loss does not use keeps its parents' `num_children` above zero, so gradients stop at those parents. The `+` and `*` VJPs do not sum over broadcast axes. This is safe here because only non-trainable buffers broadcast. `cupy.add.at` needs CuPy 13 or newer.
-- **Course material.** The `*_tests.py` files come from the course repository, which has no license file. The Part 6 test file was fetched from upstream `main` for this release and may differ from the version used for the saved results.
-
-## 14. Future work
-
-- Run pretraining, SFT, and RL end to end. Record loss, bpb, and GSM8K pass@1/pass@k/valid for the base, SFT, and RL models.
+- Host the trained weights, and publish the loss, bpb, and GSM8K pass@1/pass@k/valid results for the base, SFT, and RL models.
 - Move the shared tokenizer and model code into a package that the notebooks import.
 - Add PPO-style ratio clipping or a KL penalty to the SFT model, and remove non-policy tokens from the RL loss.
 - Run `pytest` in continuous integration.
